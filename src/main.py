@@ -4,13 +4,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 
-# Create folders automatically (FIX ERROR)
+# Create folders automatically
 os.makedirs("outputs/plots", exist_ok=True)
-from sklearn.model_selection import cross_val_score
-import joblib
 
 from sklearn.datasets import load_breast_cancer
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_curve, auc
 
@@ -20,6 +18,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 from sklearn.naive_bayes import GaussianNB
+
+import joblib
 
 # -----------------------------
 # Load Dataset
@@ -39,7 +39,6 @@ plt.title("Target Distribution")
 plt.savefig("outputs/plots/target_distribution.png")
 plt.close()
 
-# Correlation heatmap
 plt.figure(figsize=(12,10))
 sns.heatmap(X.corr(), cmap='coolwarm')
 plt.title("Feature Correlation")
@@ -54,7 +53,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 # -----------------------------
-# Scaling
+# StandardScaler (IMPORTANT)
 # -----------------------------
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
@@ -73,11 +72,19 @@ models = {
     "Gradient Boosting": GradientBoostingClassifier()
 }
 
+# -----------------------------
+# Training & Evaluation
+# -----------------------------
 results = {}
+
 for name, model in models.items():
-   model.fit(X_train, y_train)
-   pred = model.predict(X_test)
-    # -----------------------------
+    model.fit(X_train, y_train)
+    pred = model.predict(X_test)
+    acc = accuracy_score(y_test, pred)
+    results[name] = acc
+    print(f"{name}: {acc:.4f}")
+
+# -----------------------------
 # Feature Importance (Random Forest)
 # -----------------------------
 rf_model = models["Random Forest"]
@@ -90,20 +97,12 @@ plt.barh(features, importances)
 plt.title("Feature Importance")
 plt.savefig("outputs/plots/feature_importance.png")
 plt.close()
+
 # -----------------------------
 # Cross Validation
 # -----------------------------
 scores = cross_val_score(rf_model, X_train, y_train, cv=5)
 print("Cross-validation Accuracy:", scores.mean())
-# -----------------------------
-# Training & Evaluation
-# -----------------------------
-for name, model in models.items():
-    model.fit(X_train, y_train)
-    pred = model.predict(X_test)
-    acc = accuracy_score(y_test, pred)
-    results[name] = acc
-    print(f"{name}: {acc:.4f}")
 
 # -----------------------------
 # Best Model Selection
@@ -112,6 +111,7 @@ best_model_name = max(results, key=results.get)
 print("\nBest Model:", best_model_name)
 
 best_model = models[best_model_name]
+
 # -----------------------------
 # Model Comparison Plot
 # -----------------------------
@@ -156,11 +156,8 @@ plt.savefig("outputs/plots/roc_curve.png")
 plt.close()
 
 # -----------------------------
-# -----------------------------
 # Hyperparameter Tuning
 # -----------------------------
-from sklearn.model_selection import GridSearchCV
-
 param_grid = {
     'n_estimators': [100, 200],
     'max_depth': [None, 10, 20],
@@ -170,8 +167,9 @@ param_grid = {
 grid = GridSearchCV(RandomForestClassifier(), param_grid, cv=5)
 grid.fit(X_train, y_train)
 
-print("Best Parameters:", grid.best_params_)
+print("\nBest Parameters:", grid.best_params_)
 print("Best Score:", grid.best_score_)
+
 # -----------------------------
 # Save Model
 # -----------------------------
